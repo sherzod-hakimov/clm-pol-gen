@@ -293,6 +293,12 @@ class TabooGameBenchmark(GameBenchmark):
     def get_description(self):
         return "Taboo game between two agents where one has to describe a word for the other to guess."
 
+    def prepare_slurk_game(self, slurk_backend):
+        task_room_layout = self.load_json("resources/slurk/task_room_layout.json")
+        bot_permissions = self.load_json("resources/slurk/bot_permissions.json")
+        user_permissions = self.load_json("resources/slurk/user_permissions.json")
+        slurk_backend.prepare_and_wait_for_participant(task_room_layout, bot_permissions, user_permissions)
+
     def create_game_master(self, experiment: Dict, player_backends: List[str]) -> GameMaster:
         return Taboo(experiment, player_backends)
 

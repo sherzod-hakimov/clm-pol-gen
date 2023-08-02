@@ -713,6 +713,14 @@ class GameBenchmark(GameResourceLocator):
                 experiment_config["timestamp"] = datetime.now().isoformat()
                 experiment_config["dialogue_partners"] = dialogue_pair
 
+                # This might be a good spot to setup the slurk backend:
+                # 1) We know the task at hand
+                # 2) A player only connects once for the whole game
+                # 3) todo: we can pass a function to customize the slurk layout
+                if "slurk" in dialogue_pair:
+                    slurk_backend = backends.lookup_by_model_name("slurk")
+                    self.prepare_slurk_game(slurk_backend)
+
                 self.store_results_file(experiment_config, f"experiment_{experiment_name}.json",
                                         sub_dir=experiment_record_dir)
 
@@ -742,6 +750,9 @@ class GameBenchmark(GameResourceLocator):
                 experiment_config["duration"] = str(time_experiment_end)
                 self.store_results_file(experiment_config, f"experiment_{experiment_name}.json",
                                         sub_dir=experiment_record_dir)
+
+    def prepare_slurk_game(self, slurk_backend):
+        raise RuntimeError(f"Slurk users are not supported for {self.name}")
 
     def is_single_player(self) -> bool:
         """
