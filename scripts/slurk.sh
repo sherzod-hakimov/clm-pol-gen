@@ -17,6 +17,9 @@ function check_response {
     echo "$response"
 }
 
+CLEM_DIR=clembench
+
+cd ../slurk-bots
 docker build --tag "slurk/concierge-bot" -f concierge/Dockerfile .
 
 # run slurk
@@ -37,7 +40,7 @@ echo "Waiting Room Id:"
 echo $WAITING_ROOM
 
 # create task room layout
-TASK_ROOM_LAYOUT=$(check_response scripts/create_layout.sh ../101_clembench/games/chatgame/resources/task_room_layout.json | jq .id)
+TASK_ROOM_LAYOUT=$(check_response scripts/create_layout.sh ../$CLEM_DIR/games/chatgame/resources/task_room_layout.json | jq .id)
 echo "Task Room Layout Id:"
 echo $TASK_ROOM_LAYOUT
 
@@ -57,14 +60,14 @@ docker run -e SLURK_TOKEN="$CONCIERGE_BOT_TOKEN" -e SLURK_USER=$CONCIERGE_BOT -e
 sleep 5
 
 # create bot
-BOT_TOKEN=$(check_response scripts/create_room_token.sh $WAITING_ROOM ../101_clembench/games/chatgame/resources/bot_permissions.json 10 | jq .id | sed 's/^"\(.*\)"$/\1/')
+BOT_TOKEN=$(check_response scripts/create_room_token.sh $WAITING_ROOM ../$CLEM_DIR/games/chatgame/resources/bot_permissions.json 10 | jq .id | sed 's/^"\(.*\)"$/\1/')
 echo "Task Bot Token: "
 echo $BOT_TOKEN
 BOT=$(check_response scripts/create_user.sh "Chatbot" "$BOT_TOKEN" | jq .id)
 echo "Bot Id:"
 echo $BOT
 
-cd ../101_clembench/
+cd ../$CLEM_DIR/
 
 docker build --tag "slurk/chatbot" -f games/chatgame/Dockerfile .
 docker run -e SLURK_TOKEN=$BOT_TOKEN -e SLURK_USER=$BOT -e SLURK_WAITING_ROOM=$WAITING_ROOM -e TASK_ID=$TASK_ID -e SLURK_PORT=5000 --net="host" slurk/chatbot &
@@ -73,7 +76,7 @@ docker run -e SLURK_TOKEN=$BOT_TOKEN -e SLURK_USER=$BOT -e SLURK_WAITING_ROOM=$W
 cd ../slurk/
 
 # create user
-USER=$(check_response scripts/create_room_token.sh $WAITING_ROOM ../101_clembench/games/chatgame/resources/user_permissions.json 20 $TASK_ID | jq .id | sed 's/^"\(.*\)"$/\1/')
+USER=$(check_response scripts/create_room_token.sh $WAITING_ROOM ../$CLEM_DIR/games/chatgame/resources/user_permissions.json 20 $TASK_ID | jq .id | sed 's/^"\(.*\)"$/\1/')
 echo "TOKEN for logging into slurk interface at localhost:5000"
 echo $USER
 

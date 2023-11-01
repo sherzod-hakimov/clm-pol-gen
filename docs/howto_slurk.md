@@ -31,25 +31,25 @@ In order to run the whole setup locally, you need:
 - docker
 - the [slurk repository](https://github.com/clp-research/slurk)
 - the [slurk-bots repository](https://github.com/clp-research/slurk-bots) (containing the ConciergeBot)
-- this repository (101_clembench)
+- this repository (clembench)
 
 All three repositories should be located at the same level:
 ```commandline
 .
-├── 101_clembench
+├── clembench
 ├── slurk
 └── slurk-bots
 ```
 
-Navigate into the slurk-bots repository and run
+Navigate into the clembench repository and run
 ````commandline
-../101_clembench/scripts/slurk.sh
+./scripts/slurk.sh
 ````
 
 This script will set up a local slurk server, build and run both bots, and generate an access token to log into slurk at `localhost:5000`, like so (you can choose any name):
 ```commandline
 TOKEN for logging into slurk interface at localhost:5000
-64211e7b-8e90-4cd8-a07a-d24130e0c81d
+<token-hash>
 ```
 
 In the mock version, this will just repeat "I don't know anything about that." for the LLM. To connect to a model, change "mock" to a model name in games/chatgame/master.py's main(). Running slurk.sh will then let you interact with the LM via a local slurk server.
