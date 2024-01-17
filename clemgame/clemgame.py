@@ -707,19 +707,24 @@ class GameBenchmark(GameResourceLocator):
                 raise ValueError(message)
 
             for dialogue_pair in dialogue_partners:
-                if len(dialogue_pair) == 1:
+                if self.is_single_player():
+                    if len(dialogue_pair) > 1:
+                        message = f"Too many player for singe-player game '{self.name}': '{len(dialogue_partners)}'"
+                        stdout_logger.error(message)
+                        raise ValueError(message)
                     model_desc_0 = f"{dialogue_pair[0]}-t{temperature}"
-                    # still we store to model--model dir (assuming model expansion (self-play))
+                    # still we store to model--model dir (virtual self-play)
                     dialogue_pair_desc = f"{model_desc_0}--{model_desc_0}"
-                elif len(dialogue_pair) == 2:
+                else:  # 2-players
+                    if len(dialogue_pair) > 2:
+                        message = f"Too many player for two-player game '{self.name}': '{len(dialogue_partners)}'"
+                        stdout_logger.error(message)
+                        raise ValueError(message)
+                    if len(dialogue_pair) == 1:
+                        dialogue_pair.append(dialogue_pair[0])  # model expansion
                     model_desc_0 = f"{dialogue_pair[0]}-t{temperature}"
                     model_desc_1 = f"{dialogue_pair[1]}-t{temperature}"
                     dialogue_pair_desc = f"{model_desc_0}--{model_desc_1}"
-                else:
-                    message = (f"Unsupported number of dialogue partners ({len(dialogue_partners)}>2)"
-                               f" For single-player expected only a single model, otherwise a pair.")
-                    stdout_logger.error(message)
-                    raise ValueError(message)
                 episode_counter = 0
 
                 self.logger.info("Activity: %s Experiment: %s Partners: %s Episode: %d",
