@@ -43,7 +43,7 @@ game_runs=(
   "imagegame oasst-sft-4-pythia-12b-epoch-3.5"
   # Multi-player wordle_withcritic
   "wordle_withcritic koala-13B-HF"
-  "wordle_withcritic Wizard-Vicuna-13B-Uncensored-HFF"
+  "wordle_withcritic Wizard-Vicuna-13B-Uncensored-HF"
   "wordle_withcritic falcon-40b-instruct"
   "wordle_withcritic oasst-sft-4-pythia-12b-epoch-3.5"
 )

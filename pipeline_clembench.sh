@@ -46,7 +46,7 @@ game_runs=(
   "imagegame gpt-3.5-turbo"
   "imagegame claude-v1.3"
   "imagegame luminous-supreme"
-  "imagegame gpt-44"
+  "imagegame gpt-4"
   "imagegame gpt-4 gpt-3.5-turbo"
   "imagegame gpt-3.5-turbo gpt-4"
   # Multi-player wordle_withcritic
