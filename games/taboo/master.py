@@ -2,6 +2,7 @@ from typing import Dict, Tuple, List
 
 import numpy as np
 
+from backends import Backend
 from clemgame.clemgame import GameMaster, GameBenchmark, Player, DialogueGameMaster
 from clemgame.metrics import METRIC_ABORTED, METRIC_SUCCESS, METRIC_LOSE, METRIC_REQUEST_COUNT, \
     METRIC_REQUEST_COUNT_VIOLATED, METRIC_REQUEST_COUNT_PARSED, METRIC_REQUEST_SUCCESS, BENCH_SCORE
@@ -27,8 +28,8 @@ logger = get_logger(__name__)
 
 class WordGuesser(Player):
 
-    def __init__(self, model_name):
-        super().__init__(model_name)
+    def __init__(self, backend: Backend):
+        super().__init__(backend)
 
     def _custom_response(self, messages, turn_idx):
         # mock response
@@ -37,8 +38,8 @@ class WordGuesser(Player):
 
 class WordDescriber(Player):
 
-    def __init__(self, model_name, max_turns):
-        super().__init__(model_name)
+    def __init__(self, backend: Backend, max_turns):
+        super().__init__(backend)
         self.max_turns = max_turns
 
     def _custom_response(self, messages, turn_idx):
@@ -93,7 +94,7 @@ class Taboo(DialogueGameMaster):
     word or related words in their explanation. Morphology is checked in check_clue().
     """
 
-    def __init__(self, experiment: Dict, player_backends: List[str]):
+    def __init__(self, experiment: Dict, player_backends: List[Backend]):
         super().__init__(GAME_NAME, experiment, player_backends)
         self.max_turns: int = experiment["max_turns"]
         self.describer_initial_prompt = self.experiment["describer_initial_prompt"]

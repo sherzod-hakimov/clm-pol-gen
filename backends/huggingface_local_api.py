@@ -98,8 +98,8 @@ SLOW_TOKENIZER = [MODEL_YI_34B_CHAT, MODEL_ORCA_2_13B, MODEL_SUS_CHAT_34B]
 
 
 class HuggingfaceLocal(backends.Backend):
-    def __init__(self):
-        self.temperature: float = -1.
+    def __init__(self, model_spec: backends.ModelSpec):
+        super().__init__(model_spec)
         self.model_loaded = False
 
     def load_model(self, model_name):
@@ -192,8 +192,7 @@ class HuggingfaceLocal(backends.Backend):
         self.model_name = model_name
         self.model_loaded = True
 
-    def generate_response(self, messages: List[Dict], model: str,
-                          max_new_tokens: int = 100, return_full_text: bool = False) -> Tuple[Any, Any, str]:
+    def generate_response(self, messages: List[Dict]) -> Tuple[Any, Any, str]:
         """
         :param messages: for example
                 [
@@ -202,17 +201,12 @@ class HuggingfaceLocal(backends.Backend):
                     {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
                     {"role": "user", "content": "Where was it played?"}
                 ]
-        :param model: model name
-        :param max_new_tokens: How many tokens to generate ('at most', but no stop sequence is defined).
-        :param return_full_text: If True, whole input context is returned.
         :return: the continuation
         """
-        assert 0.0 <= self.temperature <= 1.0, "Temperature must be in [0.,1.]"
-
         # load the model to the memory
         if not self.model_loaded:
-            self.load_model(model)
-            logger.info(f"Finished loading huggingface model: {model}")
+            self.load_model(self.model_spec.model_id)
+            logger.info(f"Finished loading huggingface model: {self.model_spec.model_id}")
             logger.info(f"Model device map: {self.model.hf_device_map}")
 
         # log current given messages list:
@@ -244,11 +238,11 @@ class HuggingfaceLocal(backends.Backend):
 
         prompt_text = self.tokenizer.batch_decode(prompt_tokens)[0]
         prompt = {"inputs": prompt_text, "max_new_tokens": max_new_tokens,
-                  "temperature": self.temperature, "return_full_text": return_full_text}
+                  "temperature": self.model_spec.temperature, "return_full_text": return_full_text}
 
         # greedy decoding:
         do_sample: bool = False
-        if self.temperature > 0.0:
+        if self.model_spec.temperature > 0.0:
             do_sample = True
 
         # test to check if temperature is properly set on this Backend object:
@@ -277,7 +271,7 @@ class HuggingfaceLocal(backends.Backend):
             response_text = model_output.replace(prompt_text, '').strip()
 
             # handle Yi decoded output mismatch:
-            if model == MODEL_YI_34B_CHAT:
+            if self.model_spec.model_id == MODEL_YI_34B_CHAT:
                 response_text = model_output.rsplit("assistant\n", maxsplit=1)[1]
 
             # remove llama2 EOS token at the end of output:
@@ -300,6 +294,3 @@ class HuggingfaceLocal(backends.Backend):
             response_text = model_output.strip()
 
         return prompt, response, response_text
-
-    def supports(self, model_name: str):
-        return model_name in SUPPORTED_MODELS

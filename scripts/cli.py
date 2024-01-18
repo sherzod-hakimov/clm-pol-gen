@@ -1,5 +1,8 @@
 import argparse
+import json
+from typing import List
 
+from backends import ModelSpec
 from clemgame import benchmark
 
 """
@@ -31,14 +34,25 @@ from clemgame import benchmark
 """
 
 
+def read_model_specs(model_strings: List[str]):
+    model_specs = []
+    for model_string in model_strings:
+        try:
+            model_string = model_string.replace("'", "\"")  # make this a proper json
+            model_dict = json.loads(model_string)
+            model_spec = ModelSpec.from_dict(model_dict)
+        except Exception as e:  # likely not a json
+            print(e)
+            model_spec = ModelSpec.from_name(model_string)
+        model_specs.append(model_spec)
+    return model_specs
+
+
 def main(args):
     if args.command_name == "ls":
         benchmark.list_games()
     if args.command_name == "run":
-        benchmark.run(args.game,
-                      temperature=args.temperature,
-                      models=args.models,
-                      experiment_name=args.experiment_name)
+        benchmark.run(args.game, model_specs=read_model_specs(args.models), experiment_name=args.experiment_name)
     if args.command_name == "score":
         benchmark.score(args.game, experiment_name=args.experiment_name)
     if args.command_name == "transcribe":
@@ -65,8 +79,6 @@ if __name__ == "__main__":
 
       When this option is not given, then the dialogue partners configured in the experiment are used. 
       Default: None.""")
-    run_parser.add_argument("-t", "--temperature", type=float, default=0.0,
-                            help="Argument to specify sampling temperature for the models. Default: 0.0.")
     run_parser.add_argument("-e", "--experiment_name", type=str,
                             help="Optional argument to only run a specific experiment")
     run_parser.add_argument("-g", "--game", type=str,

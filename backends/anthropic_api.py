@@ -17,13 +17,13 @@ NAME = "anthropic"
 
 
 class Anthropic(backends.Backend):
-    def __init__(self):
+    def __init__(self, model_spec: backends.ModelSpec):
+        super().__init__(model_spec)
         creds = backends.load_credentials(NAME)
         self.client = anthropic.Anthropic(api_key=creds[NAME]["api_key"])
-        self.temperature: float = -1.
 
     @retry(tries=3, delay=0, logger=logger)
-    def generate_response(self, messages: List[Dict], model: str) -> Tuple[str, Any, str]:
+    def generate_response(self, messages: List[Dict]) -> Tuple[str, Any, str]:
         """
         :param messages: for example
                 [
@@ -32,10 +32,8 @@ class Anthropic(backends.Backend):
                     {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
                     {"role": "user", "content": "Where was it played?"}
                 ]
-        :param model: model name
         :return: the continuation
         """
-        assert 0.0 <= self.temperature <= 1.0, "Temperature must be in [0.,1.]"
         prompt = ''
         for message in messages:
             if message['role'] == 'assistant':
@@ -48,13 +46,10 @@ class Anthropic(backends.Backend):
         completion = self.client.completions.create(
             prompt=prompt,
             stop_sequences=[anthropic.HUMAN_PROMPT, '\n'],
-            model=model,
-            temperature=self.temperature,
+            model=self.model_spec.model_id,
+            temperature=self.model_spec.temperature,
             max_tokens_to_sample=100
         )
 
         response_text = completion.completion.strip()
         return prompt, json.loads(completion.json()), response_text
-
-    def supports(self, model_name: str):
-        return model_name in SUPPORTED_MODELS

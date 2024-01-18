@@ -24,13 +24,13 @@ NAME = "llama2-hf"
 
 
 class Llama2LocalHF(backends.Backend):
-    def __init__(self):
+    def __init__(self, model_spec: backends.ModelSpec):
         # load HF API key:
+        super().__init__(model_spec)
         creds = backends.load_credentials("huggingface")
         self.api_key = creds["huggingface"]["api_key"]
 
         self.chat_models: List = [MODEL_LLAMA2_7B_C_HF, MODEL_LLAMA2_13B_C_HF, MODEL_LLAMA2_70B_C_HF]
-        self.temperature: float = -1.
         self.model_loaded: bool = False
 
     def load_model(self, model_name: str):
@@ -59,8 +59,7 @@ class Llama2LocalHF(backends.Backend):
         self.model_name = model_name
         self.model_loaded = True
 
-    def generate_response(self, messages: List[Dict], model: str,
-                          max_new_tokens: Optional[int] = 100, top_p: float = 0.9) -> Tuple[str, Any, str]:
+    def generate_response(self, messages: List[Dict]) -> Tuple[str, Any, str]:
         """
         :param messages: for example
                 [
@@ -69,22 +68,18 @@ class Llama2LocalHF(backends.Backend):
                     {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
                     {"role": "user", "content": "Where was it played?"}
                 ]
-        :param model: model name, chat models for chat-completion, otherwise text completion
-        :param max_new_tokens: Maximum generation length.
-        :param top_p: Top-P sampling parameter. Only applies when do_sample=True.
         :return: the continuation
         """
-        assert 0.0 <= self.temperature <= 1.0, "Temperature must be in [0.,1.]"
 
         # load the model to the memory
         if not self.model_loaded:
-            self.load_model(model)
-            logger.info(f"Finished loading llama2-hf model: {model}")
+            self.load_model(self.model_spec.model_id)
+            logger.info(f"Finished loading llama2-hf model: {self.model_spec.model_id}")
             logger.info(f"Model device map: {self.model.hf_device_map}")
 
         # greedy decoding:
         do_sample: bool = False
-        if self.temperature > 0.0:
+        if self.model_spec.temperature > 0.0:
             do_sample = True
 
         # turn off redundant transformers warnings:
@@ -93,7 +88,7 @@ class Llama2LocalHF(backends.Backend):
         # deepcopy messages to prevent reference issues:
         current_messages = copy.deepcopy(messages)
 
-        if model in self.chat_models:  # chat completion
+        if self.model_spec.model_id in self.chat_models:  # chat completion
             # flatten consecutive user messages:
             for msg_idx, message in enumerate(current_messages):
                 if msg_idx > 0 and message['role'] == "user" and current_messages[msg_idx - 1]['role'] == "user":
@@ -169,6 +164,3 @@ class Llama2LocalHF(backends.Backend):
             response = {'response': response_text}
 
         return prompt, response, response_text
-
-    def supports(self, model_name: str):
-        return model_name in SUPPORTED_MODELS

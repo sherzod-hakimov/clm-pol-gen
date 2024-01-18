@@ -1,5 +1,6 @@
 from typing import List, Tuple, Dict
 
+from backends import Backend
 from clemgame import file_utils
 from clemgame import metrics
 from clemgame.clemgame import GameMaster, GameBenchmark
@@ -15,7 +16,7 @@ logger = get_logger(__name__)
 
 class ReferenceGameMaster(GameMaster):
 
-    def __init__(self, experiment: Dict, player_backends: List[str]):
+    def __init__(self, experiment: Dict, player_backends: List[Backend]):
         super().__init__(GAME_NAME, experiment, player_backends)
         self.experiment = experiment
         self.player_backends = player_backends
@@ -292,7 +293,7 @@ class ReferenceGameBenchmark(GameBenchmark):
     def get_description(self):
         return "Reference Game simulation to generate referring expressions and guess the grid"
 
-    def create_game_master(self, experiment: Dict, player_backends: List[str]) -> GameMaster:
+    def create_game_master(self, experiment: Dict, player_backends: List[Backend]) -> GameMaster:
         return ReferenceGameMaster(experiment, player_backends)
 
 

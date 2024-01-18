@@ -25,7 +25,8 @@ NAME = "generic_openai_compatible"
 
 class GenericOpenAI(backends.Backend):
 
-    def __init__(self):
+    def __init__(self, model_spec: backends.ModelSpec):
+        super().__init__(model_spec)
         creds = backends.load_credentials(NAME)
         self.client = openai.OpenAI(
             base_url=creds[NAME]["base_url"],
@@ -35,7 +36,6 @@ class GenericOpenAI(backends.Backend):
             ### issues with the certificates on our GPU server.
             http_client=httpx.Client(verify=False)
             )
-        self.temperature: float = -1.
 
     def list_models(self):
         models = self.client.models.list()
@@ -44,7 +44,7 @@ class GenericOpenAI(backends.Backend):
         return names
 
     @retry(tries=3, delay=0, logger=logger)
-    def generate_response(self, messages: List[Dict], model: str) -> Tuple[str, Any, str]:
+    def generate_response(self, messages: List[Dict]) -> Tuple[str, Any, str]:
         """
         :param messages: for example
                 [
@@ -53,17 +53,16 @@ class GenericOpenAI(backends.Backend):
                     {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
                     {"role": "user", "content": "Where was it played?"}
                 ]
-        :param model: chat-gpt for chat-completion, otherwise text completion
         :return: the continuation
         """
-        assert 0.0 <= self.temperature <= 1.0, "Temperature must be in [0.,1.]"
-
-        if model.startswith('fsc-') or model.startswith('lcp-'):
-            model = model[4:] 
+        model_id  = self.model_spec.model_id
+        if self.model_spec.model_id.startswith('fsc-') or self.model_spec.model_id.startswith('lcp-'):
+            model_id = self.model_spec.model_id[4:]
 
         prompt = messages
-        api_response = self.client.chat.completions.create(model=model, messages=prompt,
-                                                         temperature=self.temperature, max_tokens=MAX_TOKENS)
+        api_response = self.client.chat.completions.create(model=model_id, messages=prompt,
+                                                           temperature=self.model_spec.temperature,
+                                                           max_tokens=MAX_TOKENS)
         message = api_response.choices[0].message
         if message.role != "assistant":  # safety check
             raise AttributeError("Response message role is " + message.role + " but should be 'assistant'")
@@ -71,6 +70,3 @@ class GenericOpenAI(backends.Backend):
         response = json.loads(api_response.json())
 
         return prompt, response, response_text
-
-    def supports(self, model_name: str):
-        return model_name in SUPPORTED_MODELS

@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score as acc_score
 from sklearn.metrics import cohen_kappa_score
 
 import clemgame.metrics as ms
+from backends import Backend
 from clemgame import file_utils
 from clemgame.clemgame import GameMaster, GameBenchmark
 from clemgame import get_logger
@@ -26,7 +27,7 @@ logger = get_logger(__name__)
 
 class PrivateShared(GameMaster):
     """Implement mechanisms for playing PrivateShared."""
-    def __init__(self, experiment: Dict, player_backends: List[str]):
+    def __init__(self, experiment: Dict, player_backends: List[Backend]):
         super().__init__(GAME_NAME, experiment, player_backends)
         self.subtype = experiment['name']
         self.model_name = self.player_backends[0]
@@ -449,7 +450,7 @@ class PrivateSharedGameBenchmark(GameBenchmark):
 
     def create_game_master(self,
                            experiment: Dict,
-                           player_backends: List[str]
+                           player_backends: List[Backend]
                            ) -> GameMaster:
         return PrivateShared(experiment, player_backends)
 

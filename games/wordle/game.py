@@ -1,6 +1,7 @@
 import re
-from typing import Dict
+from typing import Dict, List
 
+from backends import Backend
 from clemgame import get_logger
 from games.wordle.utils.guesser import Guesser
 from games.wordle.utils.critic import Critic
@@ -20,7 +21,7 @@ class WordleGame:
         use_critic: bool,
         max_critic_opinion_count: int,
         english_words_list: str,
-        model_names: str,
+        model_names: List[Backend],
     ):
         self.max_attempts = max_attempts_per_game
         self.max_retry = max_retry_per_error
@@ -31,20 +32,20 @@ class WordleGame:
         self.model_names = model_names
 
         self.guesser = Guesser(self.model_names[0])
-        self.guesser_mode = self.model_names[0]
+        self.guesser_mode = self.model_names[0].model_spec.model_name
 
         if len(self.model_names) > 1:
             if self.model_names[0] == self.model_names[1]:
                 # Both Guesser and Critic using same model
                 self.guess_critic = Critic(self.model_names[0])
-                self.guess_critic_mode = self.model_names[0]
+                self.guess_critic_mode = self.model_names[0].model_spec.model_name
             else:
                 self.guess_critic = Critic(self.model_names[1])
-                self.guess_critic_mode = self.model_names[1]
+                self.guess_critic_mode = self.model_names[1].model_spec.model_name
         else:
             # Both Guesser and Critic using same model
             self.guess_critic = Critic(self.model_names[0])
-            self.guess_critic_mode = self.model_names[0]
+            self.guess_critic_mode = self.model_names[0].model_spec.model_name
 
         self.guesser_prompt = []
         self.critic_prompt = []

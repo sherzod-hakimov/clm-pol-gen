@@ -18,13 +18,13 @@ NAME = "alephalpha"
 
 class AlephAlpha(backends.Backend):
 
-    def __init__(self):
+    def __init__(self, model_spec: backends.ModelSpec):
+        super().__init__(model_spec)
         creds = backends.load_credentials(NAME)
         self.client = aleph_alpha_client.Client(creds[NAME]["api_key"])
-        self.temperature: float = -1.
 
     @retry(tries=3, delay=0, logger=logger)
-    def generate_response(self, messages: List[Dict], model: str) -> Tuple[Any, Any, str]:
+    def generate_response(self, messages: List[Dict]) -> Tuple[Any, Any, str]:
         """
         :param messages: for example
                 [
@@ -33,13 +33,11 @@ class AlephAlpha(backends.Backend):
                     {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
                     {"role": "user", "content": "Where was it played?"}
                 ]
-        :param model: model name
         :return: the continuation
         """
-        assert 0.0 <= self.temperature <= 1.0, "Temperature must be in [0.,1.]"
         prompt_text = ''
 
-        if 'control' in model:
+        if 'control' in self.model_spec.model_id:
             for message in messages:
                 content = message["content"]
                 if message['role'] == 'assistant':
@@ -60,11 +58,11 @@ class AlephAlpha(backends.Backend):
             "prompt": aleph_alpha_client.Prompt.from_text(prompt_text),
             "maximum_tokens": 100,
             "stop_sequences": ['\n'],
-            "temperature": self.temperature
+            "temperature": self.model_spec.temperature
         }
 
         request = aleph_alpha_client.CompletionRequest(**params)
-        api_response = self.client.complete(request=request, model=model)
+        api_response = self.client.complete(request=request, model=self.model_spec.model_id)
         response = api_response.to_json()
         response_text = api_response.completions[0].completion.strip()
 
@@ -72,6 +70,3 @@ class AlephAlpha(backends.Backend):
         prompt['prompt'] = prompt_text
 
         return prompt, response, response_text
-
-    def supports(self, model_name: str):
-        return model_name in SUPPORTED_MODELS

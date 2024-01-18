@@ -8,6 +8,7 @@ from typing import List, Dict, Tuple, Any
 from tqdm import tqdm
 
 import backends
+from backends import Backend, ProgrammaticBackend, HumanBackend
 import clemgame
 from clemgame import file_utils, string_utils, transcript_utils
 
@@ -23,37 +24,28 @@ class Player(abc.ABC):
     A participant of a game. A player can respond via a custom implementation, human input or a language model:
 
     - the programmatic players are called via the _custom_response() method
-    - the programmatic players are called via the _terminal_response() method
-    - the remote language model that requires a connection to a particular backend (API)
+    - the human players are called via the _terminal_response() method
+    - the backend players are called via the generate_response() method of the backend
     """
-    PROGRAMMATIC_PLAYERS = ["mock", "dry_run", "programmatic", "custom", "_slurk_response"]
-    HUMAN_PLAYERS = ["human", "terminal"]
 
-    def __init__(self, model_name: str):
-        self.model_name = model_name
-        self.remote = None
-        if not Player.is_programmatic(model_name) and not Player.is_human(model_name):
-            self.remote: backends.Backend = backends.lookup_by_model_name(model_name)
+    def __init__(self, backend: Backend):
+        self.backend = backend
         self.descriptor: str = None
         logger.info("Player %s", self.get_description())
 
     def get_description(self) -> str:
-        return f"{self.__class__.__name__}, {self.model_name}"
+        return f"{self.__class__.__name__}, {self.backend}"
 
     def __call__(self, messages: List[Dict], turn_idx) -> Tuple[Any, Any, str]:
         call_start = datetime.now()
-        if Player.is_programmatic(self.model_name):
+        if isinstance(self.backend, ProgrammaticBackend):
             prompt, response, response_text = messages, {"response": "programmatic"}, \
                 self._custom_response(messages, turn_idx)
-        elif Player.is_human(self.model_name):
+        elif isinstance(self.backend, HumanBackend):
             prompt, response, response_text = messages, {"response": "human"}, \
                 self._terminal_response(messages, turn_idx)
         else:
-            if self.remote is None:
-                raise AttributeError("No remote model initialized for player: " + self.get_description() + "."
-                                     + " You probably tried to load a Player with a backend"
-                                       " that is not available or could not be loaded.")
-            prompt, response, response_text = self.remote.generate_response(messages, self.model_name)
+            prompt, response, response_text = self.backend.generate_response(messages)
         call_duration = datetime.now() - call_start
         response["duration"] = str(call_duration)
         return prompt, response, response_text
@@ -80,15 +72,6 @@ class Player(abc.ABC):
         :return: the programmatic response as text
         """
         raise NotImplementedError()
-
-    @staticmethod
-    def is_programmatic(model_name):
-        return model_name in Player.PROGRAMMATIC_PLAYERS
-
-    @staticmethod
-    def is_human(model_name):
-        return model_name in Player.HUMAN_PLAYERS
-
 
 class GameResourceLocator(abc.ABC):
     """
@@ -308,14 +291,14 @@ class GameMaster(GameRecorder):
 
     """
 
-    def __init__(self, name: str, experiment: Dict, player_backends: List[str] = None):
+    def __init__(self, name: str, experiment: Dict, player_backends: List[Backend] = None):
         """
         :param name: of the game
         :param player_backends: to use for (remote) calls. For one or two players.
         """
         super().__init__(name)
-        self.experiment = experiment
-        self.player_backends = player_backends
+        self.experiment: Dict = experiment
+        self.player_backends: List[Backend] = player_backends
 
     def setup(self, **kwargs):
         """
@@ -339,7 +322,7 @@ class GameMaster(GameRecorder):
 
 class DialogueGameMaster(GameMaster):
 
-    def __init__(self, name, experiment, player_backends):
+    def __init__(self, name: str, experiment: dict, player_backends: List[Backend]):
         super().__init__(name, experiment, player_backends)
         # the logging works with an internal mapping of "Player N" -> Player
         self.players_by_names: Dict[str, Player] = collections.OrderedDict()
@@ -650,7 +633,7 @@ class GameBenchmark(GameResourceLocator):
                     stdout_logger.error(
                         f"{self.name}: '{error_count}' exceptions occurred: See clembench.log for details.")
 
-    def run(self, player_backends: List[str], temperature: float):
+    def run(self, player_backends: List[Backend]):
         """
         Runs game-play on all game instances for a game.
         There must be an instances.json with the following structure:
@@ -676,10 +659,6 @@ class GameBenchmark(GameResourceLocator):
                                 - instance.json
                                 - interaction.json
         """
-        self.logger.warning(f"{self.name}: Detected 'temperature={temperature}'")
-        # Setting this directly on the apis for now (not on the players)
-        backends.configure(lambda backend: setattr(backend, "temperature", temperature))
-
         experiments: List = self.instances["experiments"]
         if not experiments:
             self.logger.warning(f"{self.name}: No experiments for %s", self.name)
@@ -691,12 +670,18 @@ class GameBenchmark(GameResourceLocator):
                 continue
             stdout_logger.info(f"Run experiment {experiment_idx + 1} of {total_experiments}: {experiment_name}")
             # Determine dialogue partners: How often to run the experiment with different partners
-            dialogue_partners: List[List[str]] = []
+            dialogue_partners: List[List[Backend]] = []
 
             if player_backends:  # favor runtime argument over experiment config
                 dialogue_partners = [player_backends]
-            elif "dialogue_partners" in experiment:
-                dialogue_partners = experiment["dialogue_partners"]
+            elif "dialogue_partners" in experiment:  # edge-case when names are given in experiment config
+                for dialogue_pair_names in experiment["dialogue_partners"]:
+                    player_backends = []
+                    for model_name in dialogue_pair_names:
+                        model_spec = backends.ModelSpec.from_name(model_name)
+                        model_backend = backends.get_backend_for(model_spec)
+                        player_backends.append(model_backend)
+                    dialogue_partners.append(player_backends)
                 self.logger.info(f"{self.name}: Detected 'dialogue_partners' in experiment config. "
                                  f"Will run with: {dialogue_partners}")
 
@@ -712,7 +697,8 @@ class GameBenchmark(GameResourceLocator):
                         message = f"Too many player for singe-player game '{self.name}': '{len(dialogue_partners)}'"
                         stdout_logger.error(message)
                         raise ValueError(message)
-                    model_desc_0 = f"{dialogue_pair[0]}-t{temperature}"
+                    model_spec_0 = dialogue_pair[0].model_spec
+                    model_desc_0 = f"{model_spec_0.model_name}-t{model_spec_0.temperature}"
                     # still we store to model--model dir (virtual self-play)
                     dialogue_pair_desc = f"{model_desc_0}--{model_desc_0}"
                 else:  # 2-players
@@ -722,8 +708,10 @@ class GameBenchmark(GameResourceLocator):
                         raise ValueError(message)
                     if len(dialogue_pair) == 1:
                         dialogue_pair.append(dialogue_pair[0])  # model expansion
-                    model_desc_0 = f"{dialogue_pair[0]}-t{temperature}"
-                    model_desc_1 = f"{dialogue_pair[1]}-t{temperature}"
+                    model_spec_0 = dialogue_pair[0].model_spec
+                    model_desc_0 = f"{model_spec_0.model_name}-t{model_spec_0.temperature}"
+                    model_spec_1 = dialogue_pair[1].model_spec
+                    model_desc_1 = f"{model_spec_1.model_name}-t{model_spec_1.temperature}"
                     dialogue_pair_desc = f"{model_desc_0}--{model_desc_1}"
                 episode_counter = 0
 
@@ -735,7 +723,7 @@ class GameBenchmark(GameResourceLocator):
 
                 # Add some important infos to track
                 experiment_config["timestamp"] = datetime.now().isoformat()
-                experiment_config["dialogue_partners"] = dialogue_pair
+                experiment_config["dialogue_partners"] = dialogue_pair_desc
 
                 self.store_results_file(experiment_config,
                                         f"experiment_{experiment_name}.json",
@@ -782,7 +770,7 @@ class GameBenchmark(GameResourceLocator):
         """
         return False
 
-    def create_game_master(self, experiment: Dict, player_backends: List[str]) -> GameMaster:
+    def create_game_master(self, experiment: Dict, player_backends: List[Backend]) -> GameMaster:
         raise NotImplementedError()
 
 

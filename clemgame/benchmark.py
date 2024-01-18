@@ -1,11 +1,11 @@
 """ Main entry point """
-from typing import List
+from typing import List, Dict
 
+import backends
 import clemgame
 
 from datetime import datetime
 
-from clemgame import string_utils
 from clemgame.clemgame import load_benchmarks, load_benchmark
 
 logger = clemgame.get_logger(__name__)
@@ -22,18 +22,18 @@ def list_games():
         stdout_logger.info(" Game: %s -> %s", game.name, game.get_description())
 
 
-def run(game_name: str, temperature: float, models: List[str] = None, experiment_name: str = None):
-    assert 0.0 <= temperature <= 1.0, "Temperature must be in [0.,1.]"
+def run(game_name: str, model_specs: List[backends.ModelSpec] = None, experiment_name: str = None):
     if experiment_name:
         logger.info("Only running experiment: %s", experiment_name)
     try:
+        player_backends = [backends.get_backend_for(model_spec) for model_spec in model_specs]
         benchmark = load_benchmark(game_name)
-        logger.info("Running benchmark for: %s (models=%s)", game_name,
-                    models if models is not None else "see experiment configs")
+        logger.info("Running benchmark for: %s (backends=%s)", game_name,
+                    player_backends if player_backends is not None else "see experiment configs")
         if experiment_name:
             benchmark.filter_experiment.append(experiment_name)
         time_start = datetime.now()
-        benchmark.run(player_backends=models, temperature=temperature)
+        benchmark.run(player_backends=player_backends)
         time_end = datetime.now()
         logger.info(f"Run {benchmark.name} took {str(time_end - time_start)}")
     except Exception as e:

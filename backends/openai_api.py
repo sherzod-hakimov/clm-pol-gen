@@ -21,7 +21,8 @@ MAX_TOKENS = 100   # 2024-01-10, das: Should this be hardcoded???
 
 class OpenAI(backends.Backend):
 
-    def __init__(self):
+    def __init__(self, model_spec: backends.ModelSpec):
+        super().__init__(model_spec)
         creds = backends.load_credentials(NAME)
         if "organisation" in creds[NAME]:
             self.client = openai.OpenAI(
@@ -33,7 +34,6 @@ class OpenAI(backends.Backend):
                 api_key=creds[NAME]["api_key"]
                 )
         self.chat_models: List = ["gpt-3.5-turbo-0613", "gpt-3.5-turbo-1106", "gpt-4-0314", "gpt-4-0613", "gpt-4-1106-preview"]
-        self.temperature: float = -1.
 
     def list_models(self):
         models = self.client.models.list()
@@ -43,7 +43,7 @@ class OpenAI(backends.Backend):
         # [print(n) for n in names]   # 2024-01-10: what was this? a side effect-only method?
 
     @retry(tries=3, delay=0, logger=logger)
-    def generate_response(self, messages: List[Dict], model: str) -> Tuple[str, Any, str]:
+    def generate_response(self, messages: List[Dict]) -> Tuple[str, Any, str]:
         """
         :param messages: for example
                 [
@@ -52,16 +52,14 @@ class OpenAI(backends.Backend):
                     {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
                     {"role": "user", "content": "Where was it played?"}
                 ]
-        :param model: chat-gpt for chat-completion, otherwise text completion
         :return: the continuation
         """
-        assert 0.0 <= self.temperature <= 1.0, "Temperature must be in [0.,1.]"
-        if model in self.chat_models:
+        if self.model_spec.model_id in self.chat_models:
             # chat completion
             prompt = messages
-            api_response = self.client.chat.completions.create(model=model,
+            api_response = self.client.chat.completions.create(model=self.model_spec.model_id,
                                                           messages=prompt,
-                                                          temperature=self.temperature,
+                                                          temperature=self.model_spec.temperature,
                                                           max_tokens=MAX_TOKENS)
             message = api_response.choices[0].message
             if message.role != "assistant":  # safety check
@@ -71,11 +69,8 @@ class OpenAI(backends.Backend):
 
         else:  # default (text completion)
             prompt = "\n".join([message["content"] for message in messages])
-            api_response = self.client.completions.create(model=model, prompt=prompt,
-                                                     temperature=self.temperature, max_tokens=100)
+            api_response = self.client.completions.create(model=self.model_spec.model_id, prompt=prompt,
+                                                     temperature=self.model_spec.temperature, max_tokens=100)
             response = json.loads(api_response.json())
             response_text = api_response.choices[0].text.strip()
         return prompt, response, response_text
-
-    def supports(self, model_name: str):
-        return model_name in SUPPORTED_MODELS
