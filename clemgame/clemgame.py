@@ -73,6 +73,7 @@ class Player(abc.ABC):
         """
         raise NotImplementedError()
 
+
 class GameResourceLocator(abc.ABC):
     """
     Provides access to game specific resources

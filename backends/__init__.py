@@ -47,7 +47,7 @@ class ModelSpec:
         self.backend = backend
         self.model_id = model_id  # model name as specified in the backend (backends can fall back to model_name)
         self.temperature = temperature
-        self.opts = opts
+        self.opts = dict() if opts is None else opts
 
     def update(self, other: "ModelSpec"):
         # keep ours if already specified
@@ -61,8 +61,15 @@ class ModelSpec:
         other_opts.update(self.opts)  # keep ours
         self.opts = other_opts
 
-    def requires_lookup(self) -> bool:
-        return not self.has_backend()
+    def matches(self, other: "ModelSpec") -> bool:
+        if self.model_name != other.model_name:
+            return False
+
+        if self.has_backend():  # compare both
+            if self.backend != other.backend:
+                return False
+
+        return True
 
     def has_temperature(self):
         return self.temperature is not None
@@ -167,21 +174,25 @@ def is_backend(obj):
 
 
 _backend_registry: Dict[str, Type] = dict()  # we store references to the class constructor
-_model_registry: Dict[str, ModelSpec] = dict()  # we store model specs so that users might use model_name for lookup
+_model_registry: List[ModelSpec] = list()  # we store model specs so that users might use model_name for lookup
 
-_model_registry_path = os.path.join(project_root, "backends", "model_registry.json")
-if not os.path.isfile(_model_registry_path):
-    raise FileNotFoundError(f"The file model registry at '{_model_registry_path}' does not exist. "
-                            f"Create model registry as a model_registry.json file and try again.")
-with open(_model_registry_path) as f:
-    _model_listing = json.load(f)
-    for _model_entry in _model_listing:
-        _model_spec: ModelSpec = ModelSpec.from_dict(_model_entry)
-        if not _model_spec.has_backend():
-            raise ValueError(f"Missing backend definition in model registry for model_name='{_model_spec.model_name}'. "
-                             f"Check or update the backends/model_registry.json and try again."
-                             f"A minimal entry is {{'model_name':<name>,'backend':<backend>}}.")
-        _model_registry[_model_spec.model_name] = _model_spec
+
+def init_model_registry(_model_registry_path: str = None):
+    if not _model_registry_path:
+        _model_registry_path = os.path.join(project_root, "backends", "model_registry.json")
+    if not os.path.isfile(_model_registry_path):
+        raise FileNotFoundError(f"The file model registry at '{_model_registry_path}' does not exist. "
+                                f"Create model registry as a model_registry.json file and try again.")
+    with open(_model_registry_path) as f:
+        _model_listing = json.load(f)
+        for _model_entry in _model_listing:
+            _model_spec: ModelSpec = ModelSpec.from_dict(_model_entry)
+            if not _model_spec.has_backend():
+                raise ValueError(
+                    f"Missing backend definition in model registry for model_name='{_model_spec.model_name}'. "
+                    f"Check or update the backends/model_registry.json and try again."
+                    f"A minimal entry is {{'model_name':<name>,'backend':<backend>}}.")
+            _model_registry.append(_model_spec)
 
 
 def _register_backend(backend_name: str):
@@ -226,14 +237,13 @@ def get_backend_for(model_spec: ModelSpec) -> Backend:
         return HumanBackend(model_spec)
     if model_spec.is_programmatic():
         return ProgrammaticBackend(model_spec)
-    if model_spec.requires_lookup():
-        model_name = model_spec.model_name
-        if model_name not in _model_registry:
-            raise ValueError(f"Model spec requires lookup, but no entry in model registry "
-                             f"for model_name='{model_name}'. "
-                             f"Check or update the backends/model_registry.json and try again. "
-                             f"A minimal entry is {{'model_name':<name>,'backend':<backend>}}.")
-        model_entry: ModelSpec = _model_registry[model_name]
-        model_spec.update(model_entry)
+    for registered_spec in _model_registry:
+        if model_spec.matches(registered_spec):
+            model_spec.update(registered_spec)
+    if not model_spec.has_backend():
+        raise ValueError(f"Model spec requires backend, but no entry in model registry "
+                         f"for model_name='{model_spec.model_name}'. "
+                         f"Check or update the backends/model_registry.json and try again. "
+                         f"A minimal entry is {{'model_name':<name>,'backend':<backend>}}.")
     backend = _load_backend_for(model_spec)
     return backend

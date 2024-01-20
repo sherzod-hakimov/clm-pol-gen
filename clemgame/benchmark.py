@@ -11,6 +11,8 @@ from clemgame.clemgame import load_benchmarks, load_benchmark
 logger = clemgame.get_logger(__name__)
 stdout_logger = clemgame.get_logger("benchmark.run")
 
+backends.init_model_registry()
+
 
 def list_games():
     stdout_logger.info("Listing benchmark games:")
