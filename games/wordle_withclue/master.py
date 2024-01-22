@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from backends import Backend
+from backends import Model
 from clemgame.clemgame import GameBenchmark, GameMaster
 from games.wordle.master import WordleGameMaster
 
@@ -16,7 +16,7 @@ class WordleWithClueGameBenchmark(GameBenchmark):
         return "Wordle Game with a clue given to the guesser"
 
     def create_game_master(
-        self, experiment: Dict, player_backend: List[Backend]
+        self, experiment: Dict, player_backend: List[Model]
     ) -> GameMaster:
         return WordleGameMaster(self.name, experiment, player_backend)
 

@@ -5,8 +5,10 @@ import json
 import os
 import logging
 import logging.config
+from abc import ABC
+from types import SimpleNamespace
 
-from typing import Dict, List, Tuple, Any, Type
+from typing import Dict, List, Tuple, Any, Type, Union
 
 import yaml
 
@@ -36,49 +38,26 @@ def load_credentials(backend, file_name="key.json") -> Dict:
     return creds
 
 
-class ModelSpec:
+class ModelSpec(SimpleNamespace):
     PROGRAMMATIC_SPECS = ["mock", "dry_run", "programmatic", "custom", "_slurk_response"]
     HUMAN_SPECS = ["human", "terminal"]
 
-    def __init__(self, model_name: str, backend: str = None, model_id: str = None,
-                 temperature: float = None, opts: Dict = None):
-        super().__init__()
-        self.model_name = model_name  # mandatory
-        self.backend = backend
-        self.model_id = model_id  # model name as specified in the backend (backends can fall back to model_name)
-        self.temperature = temperature
-        self.opts = dict() if opts is None else opts
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-    def update(self, other: "ModelSpec"):
-        # keep ours if already specified
-        if not self.has_backend():
-            self.backend = other.backend
-        if not self.has_model_id():
-            self.model_id = other.model_id
-        if not self.has_temperature():
-            self.temperature = other.temperature
-        other_opts = other.opts.copy()
-        other_opts.update(self.opts)  # keep ours
-        self.opts = other_opts
-
-    def matches(self, other: "ModelSpec") -> bool:
-        if self.model_name != other.model_name:
+    def fully_contains(self, other: "ModelSpec") -> bool:
+        """ Return whether the other ModelSpec is fully contained within this ModelSpec """
+        for other_attr, other_value in other.__dict__.items():
+            if other_attr in self.__dict__ and self.__dict__[other_attr] == other_value:
+                continue  # because other attribute is contained in this
             return False
-
-        if self.has_backend():  # compare both
-            if self.backend != other.backend:
-                return False
-
         return True
 
     def has_temperature(self):
-        return self.temperature is not None
+        return hasattr(self, "temperature")
 
     def has_backend(self):
-        return self.backend is not None
-
-    def has_model_id(self):
-        return self.model_id is not None
+        return hasattr(self, "backend")
 
     @classmethod
     def from_name(cls, model_name: str):
@@ -88,15 +67,7 @@ class ModelSpec:
 
     @classmethod
     def from_dict(cls, spec: Dict):
-        if "model_name" not in spec:
-            raise ValueError(f"Missing 'model_name' in model spec: {spec}")
-        model_name = spec.pop("model_name")
-        model_spec = cls.from_name(model_name)
-        model_spec.backend = spec.pop("backend", None)
-        model_spec.model_id = spec.pop("model_id", None)
-        model_spec.temperature = spec.pop("temperature", None)
-        model_spec.opts = spec
-        return model_spec
+        return cls(**spec)
 
     def is_programmatic(self):
         return self.model_name in ModelSpec.PROGRAMMATIC_SPECS
@@ -105,14 +76,19 @@ class ModelSpec:
         return self.model_name in ModelSpec.HUMAN_SPECS
 
 
-class Backend(abc.ABC):
+class Model(abc.ABC):
 
     def __init__(self, model_spec: ModelSpec):
         self.model_spec = model_spec
-        if not model_spec.has_temperature():
-            model_spec.temperature = 0.0
-        if not model_spec.has_model_id():
-            model_spec.model_id = model_spec.model_name  # fallback to model name
+        assert hasattr(model_spec, "model_name"), "The passed ModelSpec must have a model_name attributed"
+
+    def get_name(self) -> str:
+        return self.model_spec.model_name
+
+    @abc.abstractmethod
+    def get_temperature(self) -> float:
+        # note: we need this for now to create the results folder
+        pass
 
     @abc.abstractmethod
     def generate_response(self, messages: List[Dict]) -> Tuple[Any, Any, str]:
@@ -126,12 +102,12 @@ class Backend(abc.ABC):
             model (str): the name of the model
 
         Returns:
-            Tuple[Any, Any, str]: The first element is the prompt object as 
+            Tuple[Any, Any, str]: The first element is the prompt object as
             passed to the LLM (i.e. after any model-specific manipulation).
             Return the full prompt object, not only the message string.
 
             The second element is the response object as gotten from the model,
-            before any manipulation. Return the full prompt object, not only 
+            before any manipulation. Return the full prompt object, not only
             the message string.
 
             These must be returned just to be logged by the GM for later inspection.
@@ -142,6 +118,17 @@ class Backend(abc.ABC):
         """
         pass
 
+
+class Backend(Model, ABC):
+    """ Marker class for a model provider. For now the Backend itself acts as if it would be the Model."""
+
+    def __init__(self, model_spec: ModelSpec):
+        super().__init__(model_spec)
+        self.temperature = model_spec.temperature if model_spec.has_temperature() else 0.0
+
+    def get_temperature(self) -> float:
+        return self.temperature
+
     def __repr__(self):
         return str(self)
 
@@ -149,18 +136,18 @@ class Backend(abc.ABC):
         return f"{self.__class__.__name__}({self.model_spec.model_name})"
 
 
-class ProgrammaticBackend(Backend):
+class MockModel(Backend):
 
-    def __init__(self, model_spec=ModelSpec("programmatic")):
+    def __init__(self, model_spec=ModelSpec(model_name="programmatic")):
         super().__init__(model_spec)
 
     def generate_response(self, messages: List[Dict]) -> Tuple[Any, Any, str]:
         raise NotImplementedError("This should never be called but is handled in Player")
 
 
-class HumanBackend(Backend):
+class HumanModel(Backend):
 
-    def __init__(self, model_spec=ModelSpec("human")):
+    def __init__(self, model_spec=ModelSpec(model_name="human")):
         super().__init__(model_spec)
 
     def generate_response(self, messages: List[Dict]) -> Tuple[Any, Any, str]:
@@ -220,7 +207,7 @@ def _register_backend(backend_name: str):
     return backend_cls
 
 
-def _load_backend_for(model_spec: ModelSpec):
+def _load_model_for(model_spec: ModelSpec) -> Model:
     backend_name = model_spec.backend
     if backend_name not in _backend_registry:
         _register_backend(backend_name)
@@ -228,22 +215,29 @@ def _load_backend_for(model_spec: ModelSpec):
     return backend_cls(model_spec)
 
 
-def get_backend_for(model_spec: ModelSpec) -> Backend:
+def get_model_for(model_spec: Union[str, Dict, ModelSpec]) -> Model:
     """
     :param model_spec: the model spec for which a supporting backend has to be found
     :return: the backend registered that supports the model
     """
+    if isinstance(model_spec, str):
+        model_spec = ModelSpec.from_name(model_spec)
+    if isinstance(model_spec, dict):
+        model_spec = ModelSpec.from_dict(model_spec)
+
     if model_spec.is_human():
-        return HumanBackend(model_spec)
+        return HumanModel(model_spec)
     if model_spec.is_programmatic():
-        return ProgrammaticBackend(model_spec)
+        return MockModel(model_spec)
+
     for registered_spec in _model_registry:
-        if model_spec.matches(registered_spec):
-            model_spec.update(registered_spec)
+        if registered_spec.fully_contains(model_spec):
+            model_spec = registered_spec  # use the entry from the registry
+
     if not model_spec.has_backend():
         raise ValueError(f"Model spec requires backend, but no entry in model registry "
                          f"for model_name='{model_spec.model_name}'. "
                          f"Check or update the backends/model_registry.json and try again. "
                          f"A minimal entry is {{'model_name':<name>,'backend':<backend>}}.")
-    backend = _load_backend_for(model_spec)
-    return backend
+    model = _load_model_for(model_spec)
+    return model

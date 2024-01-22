@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from backends import Backend
+from backends import Model
 from clemgame.clemgame import Player
 
 
@@ -47,7 +47,7 @@ class Instruction:
 
 class InstructionFollower(Player):
 
-    def __init__(self, model_name: Backend):
+    def __init__(self, model_name: Model):
         super().__init__(model_name)
 
     def __call__(self, instruction: Instruction, turn_idx):
@@ -59,7 +59,7 @@ class InstructionFollower(Player):
 
 class InstructionGiver(Player):
 
-    def __init__(self, model_name: Backend):
+    def __init__(self, model_name: Model):
         super().__init__(model_name)
 
     def __call__(self, instruction: Instruction, turn_idx):
@@ -71,7 +71,7 @@ class InstructionGiver(Player):
 
 class ImageGame:
 
-    def __init__(self, game_instance: Dict, player_backends: List[Backend]):
+    def __init__(self, game_instance: Dict, player_backends: List[Model]):
         self.game_id = game_instance['game_id']
         self.player_1_prompt_header = game_instance['player_1_prompt_header']
         self.player_2_prompt_header = game_instance['player_2_prompt_header']

@@ -1,7 +1,7 @@
 import string
 from typing import Dict, List
 
-from backends import Backend, ProgrammaticBackend
+from backends import Model, MockModel
 from clemgame.clemgame import GameMaster, GameBenchmark, Player, DialogueGameMaster
 from clemgame import get_logger
 
@@ -13,7 +13,7 @@ GAME_NAME = "hellogame"
 class Greeted(Player):
 
     def __init__(self, name):
-        super().__init__(ProgrammaticBackend())
+        super().__init__(MockModel())
         self.name = name
 
     def _custom_response(self, messages, turn_idx):
@@ -34,7 +34,7 @@ class HelloGame(DialogueGameMaster):
     is greeting another player with a target name.
     """
 
-    def __init__(self, experiment: Dict, player_backends: List[Backend]):
+    def __init__(self, experiment: Dict, player_backends: List[Model]):
         super().__init__(GAME_NAME, experiment, player_backends)
         self.language: int = experiment["language"]  # fetch experiment parameters here
         self.turns = []
@@ -102,5 +102,5 @@ class HelloGameBenchmark(GameBenchmark):
     def get_description(self):
         return "Hello game between a greeter and a greeted player"
 
-    def create_game_master(self, experiment: Dict, player_backends: List[Backend]) -> GameMaster:
+    def create_game_master(self, experiment: Dict, player_backends: List[Model]) -> GameMaster:
         return HelloGame(experiment, player_backends)

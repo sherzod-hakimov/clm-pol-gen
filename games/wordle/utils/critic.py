@@ -1,11 +1,11 @@
 from typing import List, Dict
 
-from backends import Backend
+from backends import Model
 from clemgame.clemgame import Player
 
 
 class Critic(Player):
-    def __init__(self, model_name: Backend = None):
+    def __init__(self, model_name: Model = None):
         super().__init__(model_name)
 
     def __call__(self, messages: List[Dict], turn_idx) -> str:

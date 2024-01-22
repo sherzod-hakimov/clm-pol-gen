@@ -1,7 +1,7 @@
 import re
 from typing import Dict, List
 
-from backends import Backend
+from backends import Model
 from clemgame import get_logger
 from games.wordle.utils.guesser import Guesser
 from games.wordle.utils.critic import Critic
@@ -21,7 +21,7 @@ class WordleGame:
         use_critic: bool,
         max_critic_opinion_count: int,
         english_words_list: str,
-        model_names: List[Backend],
+        model_names: List[Model],
     ):
         self.max_attempts = max_attempts_per_game
         self.max_retry = max_retry_per_error

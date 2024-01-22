@@ -6,7 +6,7 @@ import copy
 import random
 from typing import List, Dict, Any, Tuple
 
-from backends import Backend
+from backends import Model
 from clemgame.clemgame import Player
 from clemgame.file_utils import load_json
 from games.privateshared.constants import (REQUESTS_PATH, GAME_NAME, YES, NO, 
@@ -15,7 +15,7 @@ from games.privateshared.constants import (REQUESTS_PATH, GAME_NAME, YES, NO,
 
 class Answerer(Player):
     """Implement the Answerer player, making API calls to get utterances."""
-    def __init__(self, model_name: Backend):
+    def __init__(self, model_name: Model):
         super().__init__(model_name)
 
     def _custom_response(self, messages: Any, turn_idx: int) -> str:
@@ -63,7 +63,7 @@ class PrivateSharedGame:
                  request_order: List[str],
                  requests: Dict[str, int],
                  slots: Dict[str, str],
-                 model_name: Backend
+                 model_name: Model
                  ):
         self.slots = slots
         self.max_turns: int = len(self.slots)

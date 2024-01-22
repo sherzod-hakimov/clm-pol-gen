@@ -1,6 +1,6 @@
 from typing import List, Tuple, Dict
 
-from backends import Backend
+from backends import Model
 from clemgame import metrics
 from clemgame.clemgame import GameMaster, GameBenchmark
 from games.imagegame.game import ImageGame
@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 class ImageGameMaster(GameMaster):
 
-    def __init__(self, experiment: Dict, player_backends: List[Backend]):
+    def __init__(self, experiment: Dict, player_backends: List[Model]):
         super().__init__(GAME_NAME, experiment, player_backends)
         self.experiment = experiment
         self.player_backends = player_backends
@@ -372,5 +372,5 @@ class ImageGameBenchmark(GameBenchmark):
     def get_description(self):
         return "Image Game simulation to generate referring expressions and fill a grid accordingly"
 
-    def create_game_master(self, experiment: Dict, player_backends: List[Backend]) -> GameMaster:
+    def create_game_master(self, experiment: Dict, player_backends: List[Model]) -> GameMaster:
         return ImageGameMaster(experiment, player_backends)

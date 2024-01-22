@@ -28,7 +28,7 @@ def run(game_name: str, model_specs: List[backends.ModelSpec] = None, experiment
     if experiment_name:
         logger.info("Only running experiment: %s", experiment_name)
     try:
-        player_backends = [backends.get_backend_for(model_spec) for model_spec in model_specs]
+        player_backends = [backends.get_model_for(model_spec) for model_spec in model_specs]
         benchmark = load_benchmark(game_name)
         logger.info("Running benchmark for: %s (backends=%s)", game_name,
                     player_backends if player_backends is not None else "see experiment configs")

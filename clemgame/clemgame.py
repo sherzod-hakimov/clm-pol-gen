@@ -8,7 +8,7 @@ from typing import List, Dict, Tuple, Any
 from tqdm import tqdm
 
 import backends
-from backends import Backend, ProgrammaticBackend, HumanBackend
+from backends import Model, MockModel, HumanModel
 import clemgame
 from clemgame import file_utils, string_utils, transcript_utils
 
@@ -28,7 +28,7 @@ class Player(abc.ABC):
     - the backend players are called via the generate_response() method of the backend
     """
 
-    def __init__(self, backend: Backend):
+    def __init__(self, backend: Model):
         self.backend = backend
         self.descriptor: str = None
         logger.info("Player %s", self.get_description())
@@ -38,10 +38,10 @@ class Player(abc.ABC):
 
     def __call__(self, messages: List[Dict], turn_idx) -> Tuple[Any, Any, str]:
         call_start = datetime.now()
-        if isinstance(self.backend, ProgrammaticBackend):
+        if isinstance(self.backend, MockModel):
             prompt, response, response_text = messages, {"response": "programmatic"}, \
                 self._custom_response(messages, turn_idx)
-        elif isinstance(self.backend, HumanBackend):
+        elif isinstance(self.backend, HumanModel):
             prompt, response, response_text = messages, {"response": "human"}, \
                 self._terminal_response(messages, turn_idx)
         else:
@@ -292,14 +292,14 @@ class GameMaster(GameRecorder):
 
     """
 
-    def __init__(self, name: str, experiment: Dict, player_backends: List[Backend] = None):
+    def __init__(self, name: str, experiment: Dict, player_backends: List[Model] = None):
         """
         :param name: of the game
         :param player_backends: to use for (remote) calls. For one or two players.
         """
         super().__init__(name)
         self.experiment: Dict = experiment
-        self.player_backends: List[Backend] = player_backends
+        self.player_backends: List[Model] = player_backends
 
     def setup(self, **kwargs):
         """
@@ -323,7 +323,7 @@ class GameMaster(GameRecorder):
 
 class DialogueGameMaster(GameMaster):
 
-    def __init__(self, name: str, experiment: dict, player_backends: List[Backend]):
+    def __init__(self, name: str, experiment: dict, player_backends: List[Model]):
         super().__init__(name, experiment, player_backends)
         # the logging works with an internal mapping of "Player N" -> Player
         self.players_by_names: Dict[str, Player] = collections.OrderedDict()
@@ -634,7 +634,7 @@ class GameBenchmark(GameResourceLocator):
                     stdout_logger.error(
                         f"{self.name}: '{error_count}' exceptions occurred: See clembench.log for details.")
 
-    def run(self, player_backends: List[Backend]):
+    def run(self, player_backends: List[Model]):
         """
         Runs game-play on all game instances for a game.
         There must be an instances.json with the following structure:
@@ -671,7 +671,7 @@ class GameBenchmark(GameResourceLocator):
                 continue
             stdout_logger.info(f"Run experiment {experiment_idx + 1} of {total_experiments}: {experiment_name}")
             # Determine dialogue partners: How often to run the experiment with different partners
-            dialogue_partners: List[List[Backend]] = []
+            dialogue_partners: List[List[Model]] = []
 
             if player_backends:  # favor runtime argument over experiment config
                 dialogue_partners = [player_backends]
@@ -679,8 +679,7 @@ class GameBenchmark(GameResourceLocator):
                 for dialogue_pair_names in experiment["dialogue_partners"]:
                     player_backends = []
                     for model_name in dialogue_pair_names:
-                        model_spec = backends.ModelSpec.from_name(model_name)
-                        model_backend = backends.get_backend_for(model_spec)
+                        model_backend = backends.get_model_for(model_name)
                         player_backends.append(model_backend)
                     dialogue_partners.append(player_backends)
                 self.logger.info(f"{self.name}: Detected 'dialogue_partners' in experiment config. "
@@ -698,10 +697,10 @@ class GameBenchmark(GameResourceLocator):
                         message = f"Too many player for singe-player game '{self.name}': '{len(dialogue_partners)}'"
                         stdout_logger.error(message)
                         raise ValueError(message)
-                    model_spec_0 = dialogue_pair[0].model_spec
-                    model_desc_0 = f"{model_spec_0.model_name}-t{model_spec_0.temperature}"
+                    model_0 = dialogue_pair[0]
+                    model_0 = f"{model_0.get_name()}-t{model_0.get_temperature()}"
                     # still we store to model--model dir (virtual self-play)
-                    dialogue_pair_desc = f"{model_desc_0}--{model_desc_0}"
+                    dialogue_pair_desc = f"{model_0}--{model_0}"
                 else:  # 2-players
                     if len(dialogue_pair) > 2:
                         message = f"Too many player for two-player game '{self.name}': '{len(dialogue_partners)}'"
@@ -709,11 +708,11 @@ class GameBenchmark(GameResourceLocator):
                         raise ValueError(message)
                     if len(dialogue_pair) == 1:
                         dialogue_pair.append(dialogue_pair[0])  # model expansion
-                    model_spec_0 = dialogue_pair[0].model_spec
-                    model_desc_0 = f"{model_spec_0.model_name}-t{model_spec_0.temperature}"
-                    model_spec_1 = dialogue_pair[1].model_spec
-                    model_desc_1 = f"{model_spec_1.model_name}-t{model_spec_1.temperature}"
-                    dialogue_pair_desc = f"{model_desc_0}--{model_desc_1}"
+                    model_0 = dialogue_pair[0]
+                    model_0 = f"{model_0.get_name()}-t{model_0.get_temperature()}"
+                    model_1 = dialogue_pair[1]
+                    model_1 = f"{model_1.get_name()}-t{model_1.get_temperature()}"
+                    dialogue_pair_desc = f"{model_0}--{model_1}"
                 episode_counter = 0
 
                 self.logger.info("Activity: %s Experiment: %s Partners: %s Episode: %d",
@@ -771,7 +770,7 @@ class GameBenchmark(GameResourceLocator):
         """
         return False
 
-    def create_game_master(self, experiment: Dict, player_backends: List[Backend]) -> GameMaster:
+    def create_game_master(self, experiment: Dict, player_backends: List[Model]) -> GameMaster:
         raise NotImplementedError()
 
 

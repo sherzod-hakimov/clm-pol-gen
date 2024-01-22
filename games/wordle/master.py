@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict
 import numpy as np
 
-from backends import Backend, HumanBackend
+from backends import Model, HumanModel
 from clemgame.clemgame import GameMaster, GameBenchmark
 from clemgame import get_logger
 import clemgame.metrics as metrics
@@ -14,7 +14,7 @@ GAME_NAME = "wordle"
 
 
 class WordleGameMaster(GameMaster):
-    def __init__(self, game_name: str, experiment: Dict, players_backends: List[Backend]):
+    def __init__(self, game_name: str, experiment: Dict, players_backends: List[Model]):
         super().__init__(game_name, experiment, players_backends)
         self.config = experiment
         self.player_model_names = [player_backend.model_spec.model_name for player_backend in players_backends]
@@ -42,7 +42,7 @@ class WordleGameMaster(GameMaster):
         self.target_word = target_word.strip()
         self.target_word_clue = target_word_clue.strip()
         if self.config["use_clue"]:
-            if isinstance(self.player_backends[0], HumanBackend):
+            if isinstance(self.player_backends[0], HumanModel):
                 logger.info(f"Target word clue: {self.target_word_clue}")
         self.target_word_difficulty = target_word_difficulty
 
@@ -709,7 +709,7 @@ class WordleGameBenchmark(GameBenchmark):
         return "Wordle Game"
 
     def create_game_master(
-        self, experiment: Dict, player_backend: List[Backend]
+        self, experiment: Dict, player_backend: List[Model]
     ) -> GameMaster:
         return WordleGameMaster(self.name, experiment, player_backend)
 
