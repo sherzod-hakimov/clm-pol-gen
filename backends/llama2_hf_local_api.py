@@ -79,7 +79,7 @@ class Llama2LocalHF(backends.Backend):
 
         # greedy decoding:
         do_sample: bool = False
-        if self.model_spec.temperature > 0.0:
+        if self.get_temperature() > 0.0:
             do_sample = True
 
         # turn off redundant transformers warnings:

@@ -47,7 +47,7 @@ class Anthropic(backends.Backend):
             prompt=prompt,
             stop_sequences=[anthropic.HUMAN_PROMPT, '\n'],
             model=self.model_spec.model_id,
-            temperature=self.model_spec.temperature,
+            temperature=self.get_temperature(),
             max_tokens_to_sample=100
         )
 

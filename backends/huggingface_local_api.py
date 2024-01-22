@@ -238,11 +238,11 @@ class HuggingfaceLocal(backends.Backend):
 
         prompt_text = self.tokenizer.batch_decode(prompt_tokens)[0]
         prompt = {"inputs": prompt_text, "max_new_tokens": max_new_tokens,
-                  "temperature": self.model_spec.temperature, "return_full_text": return_full_text}
+                  "temperature": self.temperature, "return_full_text": return_full_text}
 
         # greedy decoding:
         do_sample: bool = False
-        if self.model_spec.temperature > 0.0:
+        if self.get_temperature() > 0.0:
             do_sample = True
 
         # test to check if temperature is properly set on this Backend object:
@@ -251,7 +251,7 @@ class HuggingfaceLocal(backends.Backend):
         if do_sample:
             model_output_ids = self.model.generate(
                 prompt_tokens,
-                temperature=self.temperature,
+                temperature=self.get_temperature(),
                 max_new_tokens=max_new_tokens,
                 do_sample=do_sample
             )

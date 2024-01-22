@@ -59,7 +59,7 @@ class OpenAI(backends.Backend):
             prompt = messages
             api_response = self.client.chat.completions.create(model=self.model_spec.model_id,
                                                           messages=prompt,
-                                                          temperature=self.model_spec.temperature,
+                                                          temperature=self.get_temperature(),
                                                           max_tokens=MAX_TOKENS)
             message = api_response.choices[0].message
             if message.role != "assistant":  # safety check
@@ -70,7 +70,7 @@ class OpenAI(backends.Backend):
         else:  # default (text completion)
             prompt = "\n".join([message["content"] for message in messages])
             api_response = self.client.completions.create(model=self.model_spec.model_id, prompt=prompt,
-                                                     temperature=self.model_spec.temperature, max_tokens=100)
+                                                     temperature=self.get_temperature(), max_tokens=100)
             response = json.loads(api_response.json())
             response_text = api_response.choices[0].text.strip()
         return prompt, response, response_text

@@ -58,7 +58,7 @@ class AlephAlpha(backends.Backend):
             "prompt": aleph_alpha_client.Prompt.from_text(prompt_text),
             "maximum_tokens": 100,
             "stop_sequences": ['\n'],
-            "temperature": self.model_spec.temperature
+            "temperature": self.get_temperature()
         }
 
         request = aleph_alpha_client.CompletionRequest(**params)

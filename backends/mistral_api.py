@@ -47,7 +47,7 @@ class Mistral(backends.Backend):
             prompt.append(ChatMessage(role=m['role'], content=m['content']))
         api_response = self.client.chat(model=self.model_spec.model_id,
                                                       messages=prompt,
-                                                      temperature=self.model_spec.temperature,
+                                                      temperature=self.get_temperature(),
                                                       max_tokens=MAX_TOKENS)
         message = api_response.choices[0].message
         if message.role != "assistant":  # safety check
