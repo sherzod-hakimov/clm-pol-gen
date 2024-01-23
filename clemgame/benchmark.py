@@ -1,5 +1,5 @@
 """ Main entry point """
-from typing import List, Dict
+from typing import List
 
 import backends
 import clemgame
@@ -11,7 +11,7 @@ from clemgame.clemgame import load_benchmarks, load_benchmark
 logger = clemgame.get_logger(__name__)
 stdout_logger = clemgame.get_logger("benchmark.run")
 
-backends.init_model_registry()
+backends.load_model_registry()
 
 
 def list_games():

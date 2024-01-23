@@ -3,6 +3,7 @@ import importlib
 import inspect
 import json
 import os
+import nltk
 import logging
 import logging.config
 from abc import ABC
@@ -45,13 +46,12 @@ class ModelSpec(SimpleNamespace):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def fully_contains(self, other: "ModelSpec") -> bool:
+    def unify(self, other: "ModelSpec") -> "ModelSpec":
         """ Return whether the other ModelSpec is fully contained within this ModelSpec """
-        for other_attr, other_value in other.__dict__.items():
-            if other_attr in self.__dict__ and self.__dict__[other_attr] == other_value:
-                continue  # because other attribute is contained in this
-            return False
-        return True
+        result = nltk.featstruct.unify(self.__dict__, other.__dict__)
+        if result is None:
+            raise ValueError(f"{self} does not unify with {other}")
+        return ModelSpec(**result)
 
     def has_temperature(self):
         return hasattr(self, "temperature")
@@ -164,7 +164,7 @@ _backend_registry: Dict[str, Type] = dict()  # we store references to the class 
 _model_registry: List[ModelSpec] = list()  # we store model specs so that users might use model_name for lookup
 
 
-def init_model_registry(_model_registry_path: str = None):
+def load_model_registry(_model_registry_path: str = None):
     if not _model_registry_path:
         _model_registry_path = os.path.join(project_root, "backends", "model_registry.json")
     if not os.path.isfile(_model_registry_path):
@@ -231,13 +231,15 @@ def get_model_for(model_spec: Union[str, Dict, ModelSpec]) -> Model:
         return MockModel(model_spec)
 
     for registered_spec in _model_registry:
-        if registered_spec.fully_contains(model_spec):
-            model_spec = registered_spec  # use the entry from the registry
+        try:
+            model_spec = model_spec.unify(registered_spec)
+        except ValueError:
+            continue
 
     if not model_spec.has_backend():
-        raise ValueError(f"Model spec requires backend, but no entry in model registry "
+        raise ValueError(f"Model spec requires backend after unification, but there might be no entry in model registry "
                          f"for model_name='{model_spec.model_name}'. "
-                         f"Check or update the backends/model_registry.json and try again. "
+                         f"Check or update the backends/model_registry.json or pass the backend directly and try again. "
                          f"A minimal entry is {{'model_name':<name>,'backend':<backend>}}.")
     model = _load_model_for(model_spec)
     return model

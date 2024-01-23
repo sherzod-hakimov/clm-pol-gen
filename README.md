@@ -21,6 +21,8 @@ On the [main project website](https://clembench.github.io) , under [leaderboard]
 
 ## Using the benchmark
 
+This repository is tested on `Python 3.8+`
+
 We welcome you to contribute to or extend the benchmark with your own games and models. 
 Please simply open a pull request. You can find more information on how to use the benchmark in the links below.
 
