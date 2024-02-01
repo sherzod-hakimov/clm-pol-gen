@@ -35,14 +35,6 @@ class HuggingfaceLocal(backends.Backend):
 
     def load_config_and_tokenizer(self, model_name):
         logger.info(f'Loading huggingface model config and tokenizer: {model_name}')
-        # model cache handling
-        root_data_path = os.path.join(os.path.abspath(os.sep), "data")
-        # check if root/data exists:
-        if not os.path.isdir(root_data_path):
-            logger.info(f"{root_data_path} does not exist, creating directory.")
-            # create root/data:
-            os.mkdir(root_data_path)
-        self.CACHE_DIR = os.path.join(root_data_path, "huggingface_cache")
 
         # get settings from model registry for the first name match that uses this backend:
         for model_setting in MODEL_REGISTRY:
@@ -72,7 +64,7 @@ class HuggingfaceLocal(backends.Backend):
         if 'slow_tokenizer' in self.model_settings:
             if self.model_settings['slow_tokenizer']:
                 self.tokenizer = AutoTokenizer.from_pretrained(hf_model_str, device_map="auto", torch_dtype="auto",
-                                                               cache_dir=self.CACHE_DIR, verbose=False, use_fast=False)
+                                                               verbose=False, use_fast=False)
             else:
                 slow_tokenizer_info = (f"{self.model_settings['model_name']} registry setting has slow_tokenizer, "
                                        f"but it is not 'true'. Please check the model entry.")
@@ -80,10 +72,10 @@ class HuggingfaceLocal(backends.Backend):
                 logger.info(slow_tokenizer_info)
         elif self.use_api_key:
             self.tokenizer = AutoTokenizer.from_pretrained(hf_model_str, token=self.api_key, device_map="auto",
-                                                           torch_dtype="auto", cache_dir=self.CACHE_DIR, verbose=False)
+                                                           torch_dtype="auto", verbose=False)
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(hf_model_str, device_map="auto", torch_dtype="auto",
-                                                           cache_dir=self.CACHE_DIR, verbose=False)
+                                                           verbose=False)
 
         # apply proper chat template:
         if not self.model_settings['premade_chat_template']:
@@ -125,10 +117,10 @@ class HuggingfaceLocal(backends.Backend):
         # load model using its default configuration:
         if self.use_api_key:
             self.model = AutoModelForCausalLM.from_pretrained(hf_model_str, token=self.api_key, device_map="auto",
-                                                              torch_dtype="auto", cache_dir=self.CACHE_DIR)
+                                                              torch_dtype="auto")
         else:
-            self.model = AutoModelForCausalLM.from_pretrained(hf_model_str, device_map="auto", torch_dtype="auto",
-                                                              cache_dir=self.CACHE_DIR)
+            self.model = AutoModelForCausalLM.from_pretrained(hf_model_str, device_map="auto", torch_dtype="auto"
+                                                              )
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model_loaded = True
