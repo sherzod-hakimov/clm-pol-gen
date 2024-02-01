@@ -233,6 +233,7 @@ def get_model_for(model_spec: Union[str, Dict, ModelSpec]) -> Model:
     for registered_spec in _model_registry:
         try:
             model_spec = model_spec.unify(registered_spec)
+            break  # use first model spec that does unify (doesn't throw an error)
         except ValueError:
             continue
 
