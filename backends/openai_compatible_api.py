@@ -8,7 +8,7 @@ import httpx
 
 logger = backends.get_logger(__name__)
 
-MAX_TOKENS = 100
+MAX_TOKENS = 200
 
 # For this backend, it makes less sense to talk about "supported models" than for others,
 # because what is supported depends very much on where this is pointed to.
