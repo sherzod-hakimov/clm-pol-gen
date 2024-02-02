@@ -51,8 +51,7 @@ class CloudGameInstanceGenerator(GameInstanceGenerator):
                         continue
 
                     prompt = player_a_prompt_header.replace('$TEXT',
-                                                            dataset[data['id']]['text']).replace(
-                        '$IMAGE_CONTEXT', data['descriptions'][experiment])
+                                                            dataset[data['id']]['text'])
 
                     game_instance = self.add_game_instance(experiment_name, game_counter)
 
@@ -61,9 +60,6 @@ class CloudGameInstanceGenerator(GameInstanceGenerator):
                     game_instance["id"] = data['id']
 
                     instance_counter += 1
-
-                    if instance_counter == 10:
-                        break
             print(instance_counter)
 
 if __name__ == '__main__':
