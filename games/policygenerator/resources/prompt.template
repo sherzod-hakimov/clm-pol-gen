@@ -1,0 +1,54 @@
+Your task is to fill in a slot that corresponds to the certain part of a hateful and misogynistic language by looking at the given sample that includes text and image context.
+
+Here are the existing slots of a hateful language: Target/Victim Identification, Attacker/Source Description, Premise/Context, Consequence/Implication, Language/Image reference.
+
+Here are the slots of a hateful language and their definitions.
+Target/Victim Identification: Define specific attributes or characteristics that identify the target or victim of hate speech. Aspects like race, gender, religion, etc.
+Attacker/Source Description: Describe the possible source of hate speech, including characteristics or identifiers.
+Premise/Context: Outline the context in which the hate speech occurs. This could include specific scenarios, platforms, or situations.
+Consequence/Implication: State the potential impact or harm caused by the hate speech, emphasizing the seriousness of such content.
+Language/Image reference : State or identify spans in text that categorize a group in a negative light, and identify objects/relations from images the reinforces hate.
+
+Here are some examples and the identified slots that correspond to certain aspect of hateful language. If a certain slot is not available or too loose to connect it, simply put "unknown". Output the assigned slots in JSON format.
+
+Text: When your mama don't change yo diaper for 19 years MENT @CHINOB4THWARD
+Image context: The image features two photos, one of which features a woman in a pair of tight pants and the other a man in a pair of jeans. The caption reads, \"when mama don't change for 18 years, yo\"
+
+Slots from hateful language:
+{
+"Target/Victim Identification": "woman in the image",
+"Attacker/Source Description": "unknown",
+"Premise/Context": "the context mentions a woman in tight pants and it is referred as diapers not being changed for 19 years",
+"Consequence/Implication": "the harm here is targeted towards a woman's physical appearance",
+"Language/Image reference":  "the mention of "diapers" and not being changed for 19 years refers to the woman in tight pants"
+}
+
+Text: MY FIANCEE DEMANDED TO KNOW IF I'D EVER BEEN WITH A PROSTITUTE. I MENTIONED HER ENGAGEMENT RING COST $2000
+Image Context:  Several people are standing near the water, with one person holding a fishing rod. The caption reads, \"my finance demanded to know if it had ever been with a hd - i mentored her engagement ring cost 2000
+
+Slots from hateful language:
+{
+"Target/Victim Identification": "fiancee",
+"Attacker/Source Description": "the other engaged person",
+"Premise/Context": "it is referred to the cost of the ring ($2000) that was given for the engagement",
+"Consequence/Implication": "the harm here is targeted towards the fiancee by referring to this person as a prostitute because the engagement ring cost money and that is how the prostitute is compared to the person who received the ring that cost $2000",
+"Language/Image reference":  "the mention of the word prostitute, engagement ring cost $2000"
+}
+
+Text: People from [specific country or ethnicity] are all criminals and should be banned from our country.
+Image Context:  A cartoon depicting individuals of a certain ethnicity in a stereotypical and derogatory manner
+
+Slots from hateful language:
+{
+"Target/Victim Identification": "Group/Community of [specific country or ethnicity]",
+"Attacker/Source Description": "unknown",
+"Premise/Context": "Nationalism from Attacker's perspective | Anti-immigration | Stereotype w.r.t the target",
+"Consequence/Implication": "Hurtful | Exclusion of target from society",
+"Language/Image reference":  "criminal, banned from country in text linked to cartoon behind in image context"
+}
+
+Now, do the following for this example and fill the slots from hateful language and output the same slots with their values in JSON format:
+
+Text: $TEXT
+Image Context:  $IMAGE_CONTEXT
+
