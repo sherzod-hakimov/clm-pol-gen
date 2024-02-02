@@ -71,8 +71,8 @@ class PolicyGeneratorInstanceGenerator(GameInstanceGenerator):
 
                     instance_counter += 1
 
-                    if instance_counter == 10:
-                        break
+                    # if instance_counter == 10:
+                    #     break
             print(instance_counter)
 
 if __name__ == '__main__':
