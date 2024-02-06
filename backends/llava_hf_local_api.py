@@ -71,7 +71,7 @@ class Llava15LocalHF(backends.Backend):
         return image
 
     def generate_response(self, messages: List[Dict], model: str,
-                          max_new_tokens: Optional[int] = 100, top_p: float = 0.9) -> Tuple[str, Any, str]:
+                          max_new_tokens: Optional[int] = 200, top_p: float = 0.9) -> Tuple[str, Any, str]:
         """
         :param messages: for example
                 [
