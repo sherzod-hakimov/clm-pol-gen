@@ -311,7 +311,7 @@ class HuggingfaceLocal(backends.Backend):
         return fits, tokens_used, tokens_left, self.context_size
 
     def generate_response(self, messages: List[Dict], model: str,
-                          max_new_tokens: int = 100, return_full_text: bool = False,
+                          max_new_tokens: int = 200, return_full_text: bool = False,
                           log_messages: bool = False) -> Tuple[Any, Any, str]:
         """
         :param messages: for example
